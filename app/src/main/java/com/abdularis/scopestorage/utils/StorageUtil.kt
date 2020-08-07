@@ -12,7 +12,6 @@ import android.os.Environment
 import android.provider.MediaStore
 import android.provider.OpenableColumns
 import android.text.format.DateUtils
-import android.util.Log
 import io.reactivex.Single
 import io.reactivex.schedulers.Schedulers
 import java.io.File
@@ -155,11 +154,7 @@ object StorageUtil {
      */
     fun getFileSizeFromUri(contentResolver: ContentResolver, uri: Uri): Long {
         return try {
-            val start = System.currentTimeMillis()
-            Log.d("TestMe", "open fd start")
-            val fd = contentResolver.openFileDescriptor(uri, "r")
-            Log.d("TestMe", "open fd end: ${System.currentTimeMillis() - start}")
-            fd?.use { it.statSize } ?: 0
+            contentResolver.openFileDescriptor(uri, "r")?.use { it.statSize } ?: 0
         } catch (e: Exception) {
             0
         }
@@ -179,6 +174,30 @@ object StorageUtil {
             it.moveToFirst()
             it.getString(0)
         }
+    }
+
+    private fun isFileExists(
+        contentResolver: ContentResolver,
+        collectionUri: Uri,
+        name: String,
+        path: String
+    ): Boolean {
+        val projection = arrayOf(
+            MediaStore.Files.FileColumns.DISPLAY_NAME,
+            MediaStore.Files.FileColumns.RELATIVE_PATH
+        )
+        val selection =
+            "${MediaStore.Files.FileColumns.DISPLAY_NAME}=? and ${MediaStore.Files.FileColumns.RELATIVE_PATH} like ?"
+        val selectionArgs = arrayOf(name, "%$path%")
+        return contentResolver.query(
+            collectionUri,
+            projection,
+            selection,
+            selectionArgs,
+            null
+        )?.use {
+            it.count > 0
+        } ?: false
     }
 
     private const val MIME_TYPE_JPEG = "image/jpeg"

@@ -13,7 +13,9 @@ import android.util.Log
 import android.widget.Toast
 import androidx.core.content.ContextCompat
 import com.abdularis.scopestorage.utils.StorageUtil
+import io.reactivex.Single
 import io.reactivex.android.schedulers.AndroidSchedulers
+import io.reactivex.schedulers.Schedulers
 import kotlinx.android.synthetic.main.activity_main.*
 
 class MainActivity : AppCompatActivity() {
@@ -130,7 +132,7 @@ class MainActivity : AppCompatActivity() {
             this,
             bmp,
             "write_to_mediastore.jpg",
-            subFolder = "myapp_testme"
+            subFolder = "MY_APP_TEST"
         ).observeOn(AndroidSchedulers.mainThread())
             .subscribe { uri ->
                 Log.d("TestMe", "saved to $uri, path: ${StorageUtil.getFilePathFromUri(this.contentResolver, uri!!)}")
