@@ -1,9 +1,11 @@
 package com.abdularis.scopestorage.utils
 
+import android.annotation.TargetApi
 import android.content.ContentResolver
 import android.content.ContentValues
 import android.content.Context
 import android.graphics.Bitmap
+import android.media.MediaScannerConnection
 import android.net.Uri
 import android.os.Build
 import android.os.Environment
@@ -22,7 +24,7 @@ object StorageUtil {
         bitmap: Bitmap,
         filename: String
     ): Single<String> {
-        return Single.fromCallable<String> {
+        return Single.fromCallable {
             val file = File(context.getExternalFilesDir(Environment.DIRECTORY_PICTURES), filename)
             FileOutputStream(file).use { fos ->
                 bitmap.compress(Bitmap.CompressFormat.JPEG, DEFAULT_IMAGE_QUALITY, fos)
@@ -31,16 +33,57 @@ object StorageUtil {
         }.subscribeOn(Schedulers.io())
     }
 
-    fun savePictureToSharedStorage(
+    @TargetApi(Build.VERSION_CODES.P)
+    private fun createImageFile(
+        filename: String,
+        subFolder: String
+    ): File {
+        val baseDir =
+            "${Environment.getExternalStoragePublicDirectory(Environment.DIRECTORY_PICTURES)}${File.separator}"
+        val dir = File(if (subFolder.isNotEmpty()) "$baseDir$subFolder" else baseDir)
+        if (!dir.exists()) {
+            if (!dir.mkdirs()) {
+                throw IllegalStateException("Failed to create a directory")
+            }
+        }
+        return File(dir, filename)
+    }
+
+    @TargetApi(Build.VERSION_CODES.P)
+    private fun savePictureToSharedStorageSdk28Below(
         context: Context,
         bitmap: Bitmap,
         filename: String,
-        description: String? = null,
-        subFolder: String = ""
+        subFolder: String
+    ): Single<Uri?> {
+        return Single.create { singleSubscriber ->
+            try {
+                val imageFile = createImageFile(filename, subFolder)
+                FileOutputStream(imageFile).use { fos ->
+                    bitmap.compress(Bitmap.CompressFormat.JPEG, DEFAULT_IMAGE_QUALITY, fos)
+                }
+                MediaScannerConnection.scanFile(
+                    context, arrayOf(imageFile.absolutePath), arrayOf(MIME_TYPE_JPEG)
+                ) { _, uri ->
+                    singleSubscriber.onSuccess(uri)
+                }
+            } catch (e: Exception) {
+                singleSubscriber.onError(e)
+            }
+        }
+    }
+
+    @TargetApi(Build.VERSION_CODES.Q)
+    private fun savePictureToSharedStorageSdk29Above(
+        context: Context,
+        bitmap: Bitmap,
+        filename: String,
+        description: String?,
+        subFolder: String
     ): Single<Uri?> {
         return Single.fromCallable {
             val contentResolver = context.contentResolver
-            val imageCollection = MediaStore.Images.Media.getContentUri(getVolumeName())
+            val imageCollection = MediaStore.Images.Media.getContentUri(MediaStore.VOLUME_EXTERNAL_PRIMARY)
             val pendingValues = createImagePendingValues(filename, description, subFolder)
             val insertedItem = contentResolver.insert(imageCollection, pendingValues)
 
@@ -56,10 +99,29 @@ object StorageUtil {
                 }
                 this
             }
+        }
+    }
+
+    fun savePictureToSharedStorage(
+        context: Context,
+        bitmap: Bitmap,
+        filename: String,
+        description: String? = null,
+        subFolder: String = ""
+    ): Single<Uri?> {
+        return if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
+            savePictureToSharedStorageSdk29Above(
+                context, bitmap, filename, description, subFolder
+            )
+        } else {
+            savePictureToSharedStorageSdk28Below(
+                context, bitmap, filename, subFolder
+            )
         }.subscribeOn(Schedulers.io())
     }
 
 
+    @TargetApi(Build.VERSION_CODES.Q)
     private fun createImagePendingValues(
         filename: String,
         description: String?,
@@ -87,13 +149,6 @@ object StorageUtil {
             }
         }
     }
-
-
-    private fun getVolumeName() =
-        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q)
-            MediaStore.VOLUME_EXTERNAL_PRIMARY
-        else
-            VOLUME_EXTERNAL
 
     /**
      * uri scheme either content:// or file://
@@ -126,7 +181,6 @@ object StorageUtil {
         }
     }
 
-    private const val VOLUME_EXTERNAL = "external"
     private const val MIME_TYPE_JPEG = "image/jpeg"
     private const val DEFAULT_IMAGE_QUALITY = 90
 }

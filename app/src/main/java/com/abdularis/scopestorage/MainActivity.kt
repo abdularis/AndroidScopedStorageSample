@@ -133,7 +133,7 @@ class MainActivity : AppCompatActivity() {
             subFolder = "myapp_testme"
         ).observeOn(AndroidSchedulers.mainThread())
             .subscribe { uri ->
-                Log.d("TestMe", "saved to $uri")
+                Log.d("TestMe", "saved to $uri, path: ${StorageUtil.getFilePathFromUri(this.contentResolver, uri!!)}")
                 Log.d("TestMe", "inserted file size: ${StorageUtil.getFileSizeFromUri(this.contentResolver, uri!!)}")
                 Toast.makeText(this, "saved successfully", Toast.LENGTH_SHORT).show()
             }
