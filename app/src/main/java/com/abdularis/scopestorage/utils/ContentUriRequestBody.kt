@@ -3,6 +3,7 @@ package com.abdularis.scopestorage.utils
 import android.content.ContentResolver
 import android.net.Uri
 import android.os.ParcelFileDescriptor
+import android.util.Log
 import okhttp3.MediaType
 import okhttp3.MediaType.Companion.toMediaTypeOrNull
 import okhttp3.RequestBody
@@ -23,15 +24,19 @@ class ContentUriRequestBody(
     }
 
     override fun contentLength(): Long {
+        Log.d("TestMe", "content length")
         return parcelFileDescriptor?.statSize ?: 0
     }
 
     override fun contentType(): MediaType? {
-        val contentType = contentResolver.getType(contentUri)
-        return contentType?.toMediaTypeOrNull()
+        Log.d("TestMe", "content type")
+
+        return contentResolver.getType(contentUri)?.toMediaTypeOrNull()
     }
 
     override fun writeTo(sink: BufferedSink) {
+        Log.d("TestMe", "open file, writeTo")
+
         parcelFileDescriptor?.fileDescriptor?.let { fd ->
             FileInputStream(fd).source().use { fis ->
                 sink.writeAll(fis)

@@ -11,6 +11,7 @@ import android.os.Build
 import android.os.Environment
 import android.provider.MediaStore
 import android.provider.OpenableColumns
+import android.system.Os
 import android.text.format.DateUtils
 import io.reactivex.Single
 import io.reactivex.schedulers.Schedulers
@@ -162,10 +163,20 @@ object StorageUtil {
 
     fun queryFileNameFromUri(contentResolver: ContentResolver, uri: Uri): String {
         val projection = arrayOf(OpenableColumns.DISPLAY_NAME)
-        return contentResolver.query(uri, projection, null, null, null)?.use {
-            it.moveToFirst()
-            it.getString(0)
-        } ?: ""
+        return try {
+            contentResolver.query(uri, projection, null, null, null)?.use {
+                it.moveToFirst()
+                it.getString(0)
+            } ?: ""
+        } catch (e: Exception) {
+            ""
+        }
+    }
+
+    fun queryFileNameFromUriRx(contentResolver: ContentResolver, uri: Uri): Single<String> {
+        return Single.fromCallable {
+            queryFileNameFromUri(contentResolver, uri)
+        }
     }
 
     fun getFilePathFromUri(contentResolver: ContentResolver, uri: Uri): String? {
@@ -174,6 +185,9 @@ object StorageUtil {
             it.moveToFirst()
             it.getString(0)
         }
+    }
+
+    fun printState(context: Context) {
     }
 
     private fun isFileExists(

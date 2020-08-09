@@ -1,10 +1,12 @@
 package com.abdularis.scopestorage
 
+import android.annotation.SuppressLint
 import android.app.Activity
 import android.content.Intent
 import android.net.Uri
 import androidx.appcompat.app.AppCompatActivity
 import android.os.Bundle
+import android.util.Log
 import android.view.View
 import com.abdularis.scopestorage.utils.StorageUtil
 import com.abdularis.scopestorage.utils.UploadUtil
@@ -39,15 +41,17 @@ class UploadActivity : AppCompatActivity() {
         progressUpload.visibility = if (uploading) View.VISIBLE else View.GONE
     }
 
+    @SuppressLint("CheckResult")
     private fun upload(uri: Uri) {
         val filename = StorageUtil.queryFileNameFromUri(contentResolver, uri)
         showUploadStatus(true, filename)
-        Single.fromCallable {
-            UploadUtil.uploadFile(contentResolver, uri)
-        }.subscribeOn(Schedulers.io())
+
+        UploadUtil.uploadFile(contentResolver, uri)
+            .subscribeOn(Schedulers.io())
             .observeOn(AndroidSchedulers.mainThread())
-            .subscribe { _ ->
+            .subscribe { resp ->
                 showUploadStatus(false, "")
+                Log.d("TestMe", "resp: ${resp.code()}")
             }
     }
 }
