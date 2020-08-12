@@ -11,7 +11,6 @@ import android.os.Build
 import android.os.Environment
 import android.provider.MediaStore
 import android.provider.OpenableColumns
-import android.system.Os
 import android.text.format.DateUtils
 import io.reactivex.Single
 import io.reactivex.schedulers.Schedulers
@@ -19,6 +18,22 @@ import java.io.File
 import java.io.FileOutputStream
 
 object StorageUtil {
+    fun copyContentToCache(
+        context: Context,
+        contentUri: Uri
+    ): Single<File?> {
+        return Single.fromCallable {
+            val contentResolver = context.contentResolver
+            contentResolver.openInputStream(contentUri)?.use { inputStream ->
+                val outFile = File(context.cacheDir, queryFileNameFromUri(contentResolver, contentUri))
+                FileOutputStream(outFile).use { fileOutputStream ->
+                    inputStream.copyTo(fileOutputStream)
+                }
+                return@use outFile
+            }
+        }.subscribeOn(Schedulers.io())
+    }
+
     fun savePictureToPrivateExternalStorage(
         context: Context,
         bitmap: Bitmap,
