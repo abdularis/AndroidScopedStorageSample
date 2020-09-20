@@ -19,29 +19,16 @@ class ContentUriRequestBody(
     private val contentUri: Uri
 ) : RequestBody() {
 
-    private val parcelFileDescriptor: ParcelFileDescriptor? by lazy {
-        contentResolver.openFileDescriptor(contentUri, MODE_READ)
-    }
-
     override fun contentLength(): Long {
-        Log.d("TestMe", "content length")
-        return parcelFileDescriptor?.statSize ?: 0
+        return contentResolver.openFileDescriptor(contentUri, MODE_READ)?.use { it.statSize } ?: 0
     }
 
     override fun contentType(): MediaType? {
-        Log.d("TestMe", "content type")
-
         return contentResolver.getType(contentUri)?.toMediaTypeOrNull()
     }
 
     override fun writeTo(sink: BufferedSink) {
-        Log.d("TestMe", "open file, writeTo")
-
-        parcelFileDescriptor?.fileDescriptor?.let { fd ->
-            FileInputStream(fd).source().use { fis ->
-                sink.writeAll(fis)
-            }
-        }
+        contentResolver.openInputStream(contentUri)?.source()?.use { sink.writeAll(it) }
     }
 
     companion object {
